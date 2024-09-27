@@ -14,8 +14,29 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Set the default schema and catalog
+dbutils.widgets.text("unity_catalog", "main", "Unity Catalog")
+dbutils.widgets.text("unity_schema", "euroreg", "Unity Schema")
+unity_catalog = dbutils.widgets.get("unity_catalog")
+unity_schema = dbutils.widgets.get("unity_schema")
+
+print("set the Unity Catalog Schema and Catalog using the selection box widgets above")
+
+print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
+#spark.sql(f"USE {unity_catalog}.{unity_schema}")
+
+# COMMAND ----------
+
 # MAGIC %pip install -r ../requirements.txt
 # MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %pip install mlflow
+
+# COMMAND ----------
+
+# MAGIC %restart_python
 
 # COMMAND ----------
 
@@ -35,8 +56,8 @@ from finreganalytics.utils import get_spark, get_user_name, batchify
 
 # COMMAND ----------
 
-uc_target_catalog = "msh"
-uc_target_schema = "test"
+uc_target_catalog = dbutils.widgets.get("unity_catalog")
+uc_target_schema = dbutils.widgets.get("unity_schema")
 
 if (locals().get("uc_target_catalog") is None
         or locals().get("uc_target_schema") is None):
