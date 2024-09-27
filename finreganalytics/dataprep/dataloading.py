@@ -13,6 +13,10 @@ from pyspark.sql.functions import col, explode
 from pyspark.sql.pandas.functions import pandas_udf
 from transformers import AutoTokenizer
 
+from transformers import LlamaTokenizerFast
+#tokenizer = LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
+#tokenizer.encode("Hello this is a test")
+
 from finreganalytics.utils import get_spark
 
 
@@ -69,10 +73,14 @@ def split(df: DataFrame, hf_tokenizer_name: str, chunk_size: int) -> DataFrame:
         else:
             return [text]
 
+    # EB
+    tokenizer = LlamaTokenizerFast.from_pretrained(hf_tokenizer_name)
+
     @pandas_udf("array<string>")
     def split_udf(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
         text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-            AutoTokenizer.from_pretrained(hf_tokenizer_name),
+            # EB AutoTokenizer.from_pretrained(hf_tokenizer_name),
+            tokenizer,
             chunk_size=chunk_size,
             chunk_overlap=int(chunk_size / 10),
             add_start_index=True,

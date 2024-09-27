@@ -1,14 +1,34 @@
 # Databricks notebook source
 # MAGIC %md 
-# MAGIC # Model Adaptation Demo 
+# MAGIC # Model Fine Tuning Demo 
 # MAGIC ## Fine-tuning a European Financial Regulation Assistant model 
 # MAGIC
-# MAGIC In this demo we will generate synthetic question/answer data about Capital Requirements Regulation and after that will use this data to dine tune the Llama 3.0 8B model.
+# MAGIC Generate synthetic question/answer data about Capital Requirements Regulation and use this data to fine tune the Llama 3.0 8B model.
+# MAGIC
+# MAGIC ## Notebook 1: data preparation
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Data Preparation
+# MAGIC ## Set the Unity Catalog Schema and Catalog location
+
+# COMMAND ----------
+
+# DBTITLE 1,Set the default schema and catalog
+dbutils.widgets.text("unity_catalog", "main", "Unity Catalog")
+dbutils.widgets.text("unity_schema", "euroreg", "Unity Schema")
+unity_catalog = dbutils.widgets.get("unity_catalog")
+unity_schema = dbutils.widgets.get("unity_schema")
+
+print("set the Unity Catalog Schema and Catalog using the selection box widgets above")
+
+print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
+#spark.sql(f"USE {unity_catalog}.{unity_schema}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Data Preparation and Load Libraries
 
 # COMMAND ----------
 
@@ -17,22 +37,22 @@
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC In the following cell we will specify the target catalog and schema where we will store all the tables we create during this demo. 
+# MAGIC %restart_python
 
 # COMMAND ----------
 
-uc_target_catalog = "edb_training_2"
-uc_target_schema = "euroreg"
-uc_volume_path = "/Volumes/msh/finreg/data"
+uc_target_catalog = dbutils.widgets.get("unity_catalog")
+uc_target_schema = dbutils.widgets.get("unity_schema")
+uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC If the catalog, schema or source data path is not defined, we will try to create a new catalog and schema and copy sample pdf files from the git repo. 
+# MAGIC If the catalog, schema or source data path is not defined, try to create a new catalog and schema and copy sample pdf files from the git repo. 
 
 # COMMAND ----------
 
+# try just re-running this block if there is an issue "None of PyTorch, TensorFlow >= 2.0, or Flax have been found"
 import pathlib
 import shutil
 
@@ -60,7 +80,8 @@ if (locals().get("uc_target_catalog") is None
 
 # COMMAND ----------
 
-# MAGIC %md Now we can ingest the pdf files and  parse their content
+# MAGIC %md 
+# MAGIC ## Ingest the PDF files and  parse their content
 
 # COMMAND ----------
 
@@ -70,6 +91,16 @@ display(docs_df) # noqa
 # COMMAND ----------
 
 # MAGIC %md After ingesting pdfs and transforming them tot he simple text, we will split the documents and store the chunks as a delta table
+
+# COMMAND ----------
+
+# for testing
+docs_short_df = docs_df.limit(1)
+
+# COMMAND ----------
+
+print(type(docs_df))
+print(type(docs_short_df))
 
 # COMMAND ----------
 
