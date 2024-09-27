@@ -22,8 +22,8 @@
 
 # COMMAND ----------
 
-uc_target_catalog = "msh"
-uc_target_schema = "test"
+uc_target_catalog = "edb_training_2"
+uc_target_schema = "euroreg"
 uc_volume_path = "/Volumes/msh/finreg/data"
 
 # COMMAND ----------
