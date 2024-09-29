@@ -1,16 +1,27 @@
 # Databricks notebook source
 # MAGIC %md 
-# MAGIC # Model Adaptation Demo 
+# MAGIC # Model Fine Tuning Demo 
 # MAGIC ## Fine-tuning a European Financial Regulation Assistant model 
 # MAGIC
-# MAGIC In this demo we will generate synthetic question/answer data about Capital Requirements Regulation and after that will use this data to dine tune the Llama 3.0 8B model.
+# MAGIC Generate synthetic question/answer data about Capital Requirements Regulation and use this data to fine tune the Llama 3.0 8B model.
+# MAGIC
+# MAGIC ## Notebook 2: data generation
+# MAGIC
+# MAGIC create the tables:
+# MAGIC - `qa_dataset`
+# MAGIC - `qa_dataset_train`
+# MAGIC - `qa_dataset_val`
+# MAGIC - `qa_instructions_train` - synthetic training data-set for fine-tuning the LLM
+# MAGIC - `qa_instructions_val`  - synthetic validation data-set for testing the LLM
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Synthetic Data Generation
 # MAGIC In this notebook we will use the CoT technique to create high quality questions and answers about Capital Requirements Regulation.
-# MAGIC We will iterate over all the chunks we created in the first step and generate a question about the facts mentioned in the chunk and then ask an LLM to answer this question using the provided chunk. 
+# MAGIC We will iterate over all the chunks we created in the first step and generate a question about the facts mentioned in the chunk and then ask an LLM to answer this question using the provided chunk.  
+# MAGIC
+# MAGIC This synthetic data will be used by *Notebook 3* to fine-tune an LLM.
 
 # COMMAND ----------
 
@@ -32,7 +43,7 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 
 # COMMAND ----------
 
-# MAGIC %pip install mlflow
+#%pip install mlflow
 
 # COMMAND ----------
 
@@ -43,9 +54,12 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 from langchain_community.chat_models.databricks import ChatDatabricks
 from pyspark.sql.functions import rand
 
+# prepare_ift_dataset applys the transform_chat_udf UDF to a set schema in a Spark DF
 from finreganalytics.dataprep.ift_data_prep import (
     prepare_ift_dataset,
 )
+
+# build_instruction_eval_dataset generates an evaluation dataset containing Question, Answer and Context records using supplied LLM
 from finreganalytics.dataprep.qagen import build_instruction_eval_dataset
 from finreganalytics.utils import get_spark, get_user_name, batchify
 
@@ -253,6 +267,7 @@ chunks = chunks_df.toPandas()["text"].values.tolist()[:100]
 
 llm = ChatDatabricks(endpoint="databricks-meta-llama-3-1-70b-instruct", temperature=0.9)
 
+# The LangChain "chain" is defined in finreganalytics.qagen.build_instruction_eval_dataset
 qa_questions_df = build_instruction_eval_dataset(
     chunks[:2],
     llm,
@@ -321,3 +336,11 @@ qa_ift_val_df.write.mode("overwrite").saveAsTable(f"{uc_target_catalog}.{uc_targ
 # COMMAND ----------
 
 display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_val"))  # noqa
+
+# COMMAND ----------
+
+display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_train"))  # noqa
+
+# COMMAND ----------
+
+
