@@ -18,10 +18,15 @@
 
 # MAGIC %md
 # MAGIC ## Synthetic Data Generation
-# MAGIC In this notebook we will use the CoT technique to create high quality questions and answers about Capital Requirements Regulation.
+# MAGIC In this notebook we will use the CoT (Chain of Thought) technique to create high quality questions and answers about Capital Requirements Regulation.
 # MAGIC We will iterate over all the chunks we created in the first step and generate a question about the facts mentioned in the chunk and then ask an LLM to answer this question using the provided chunk.  
 # MAGIC
 # MAGIC This synthetic data will be used by *Notebook 3* to fine-tune an LLM.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Set the Unity Catalog Schema and Catalog location
 
 # COMMAND ----------
 
@@ -38,6 +43,18 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 
 # COMMAND ----------
 
+uc_target_catalog = dbutils.widgets.get("unity_catalog")
+uc_target_schema = dbutils.widgets.get("unity_schema")
+uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Load Libraries and Helper Functions
+
+# COMMAND ----------
+
+# DBTITLE 1,Install Libraries
 # MAGIC %pip install -r ../requirements.txt
 # MAGIC dbutils.library.restartPython()
 
@@ -51,10 +68,12 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 
 # COMMAND ----------
 
+# DBTITLE 1,import helper functions to prepare the dataset
+# ChatDatabricks class wraps a chat model endpoint hosted on Databricks Model Serving. 
 from langchain_community.chat_models.databricks import ChatDatabricks
 from pyspark.sql.functions import rand
 
-# prepare_ift_dataset applys the transform_chat_udf UDF to a set schema in a Spark DF
+# "prepare_ift_dataset" applys the UDF "transform_chat_udf" to a set schema in a Spark DF
 from finreganalytics.dataprep.ift_data_prep import (
     prepare_ift_dataset,
 )
@@ -65,23 +84,9 @@ from finreganalytics.utils import get_spark, get_user_name, batchify
 
 # COMMAND ----------
 
-# MAGIC %md In the following cell we will specify the target catalog and schema where we will store all the tables we create during this demo. 
-# MAGIC If the catalog, schema or source data path is not defined, we will try to create a new catalog and schema and copy sample pdf files from the git repo. 
-
-# COMMAND ----------
-
-uc_target_catalog = dbutils.widgets.get("unity_catalog")
-uc_target_schema = dbutils.widgets.get("unity_schema")
-
-if (locals().get("uc_target_catalog") is None
-        or locals().get("uc_target_schema") is None):
-    uc_target_catalog = get_user_name()
-    uc_target_schema = get_user_name()
-
-# COMMAND ----------
-
 # MAGIC %md 
-# MAGIC In the following cell, we define the prompt to generate an initial question that corresponds to the chunk of text.
+# MAGIC ## LLM Chat Templates - Question Templates
+# MAGIC Step 1: define the prompt to generate an initial question that corresponds to the chunk of text.
 
 # COMMAND ----------
 
@@ -107,7 +112,8 @@ Do not include any further information.
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC In the following cell we will start to use CoT and ask an LLM to give reasons and thoughts behind the choice of this particlar question. We will also ask the LLM to provide some judgment as to whether this is a good question and also to provide some ideas for improvement. 
+# MAGIC Step 2: For the second prompt template, we will use CoT and ask an LLM to give reasons and thoughts behind the choice of this particlar question.  
+# MAGIC We will also ask the LLM to provide some judgment as to whether this is a good question and also to provide some ideas for improvement. 
 
 # COMMAND ----------
 
@@ -136,7 +142,7 @@ After that make a decision and explain why you think it is a good or bad one.
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now, as a final step in the question generation process, we will ask the LLM to improve the generated question using the thoughts and improvement ideas we generated in the previous cell.
+# MAGIC Step 3: Finally we create a prompt to ask the LLM to improve the generated question using the thoughts and improvement ideas we generated in the previous cell.
 
 # COMMAND ----------
 
@@ -172,7 +178,9 @@ Do not include any further information and do not write if the question is good 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Finally, we have generated our question in the previous cell, and in the next cell we will define 3 prompts to generate an answer using the same logic:
+# MAGIC ## LLM Chat Templates - Answer Templates
+# MAGIC
+# MAGIC Now we have defined the question templates, next we will define 3 prompts to generate an answer using the same logic:
 # MAGIC - Generate initial answer
 # MAGIC - Generate thoughts and reasoning behind it, and then come up with some judgments and ideas for improvement.
 # MAGIC - Use these ideas to improve the answer.
@@ -256,12 +264,27 @@ Do not include any further information and do not write if the question is good 
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Run the Chat Prompt to process the raw data and generate training data
 # MAGIC Now we will use Llama 3.1 70B to run all these prompts for each chunk. 
-# MAGIC We will pass them to the `build_instruction_eval_dataset` function which will iterate over the chunks, build the final prompts and send them to Llama 3.1 70B.
-# MAGIC In the next cell, we will generate just two questions to validate our approach
+# MAGIC We will pass them to the `build_instruction_eval_dataset` function (imported earlier from `finreganalytics.dataprep.qagen`).  
+# MAGIC - This function will iterate over the input chunks of data, build the final prompts and send them to Llama 3.1 70B.  
+# MAGIC - The output data is stored in table `qa_dataset`
+# MAGIC
+# MAGIC The Langchain chain defined in `build_instruction_eval_dataset` processes the raw chunks of text data in `splitted_documents` (converted to Pandas) to produce synthetic model training example questions and answers.
+# MAGIC
+# MAGIC ![question and answer chain](../doc/langchain_questions_and_answers_chain.png)
+# MAGIC
+# MAGIC
+# MAGIC
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC In the next cell, we will generate just two questions to validate our approach.
+
+# COMMAND ----------
+
+# DBTITLE 1,Test the questions and answers chain
 chunks_df = get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.splitted_documents").orderBy(rand())
 chunks = chunks_df.toPandas()["text"].values.tolist()[:100]
 
@@ -287,6 +310,7 @@ display(qa_questions_df)  # noqa
 
 # COMMAND ----------
 
+# DBTITLE 1,Run the Question and Answer Generator
 number_of_questions = 2
 chunk_length = 200
 
@@ -318,7 +342,15 @@ display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_datas
 
 # COMMAND ----------
 
-# MAGIC %md Now we should have all questions and answers ready and we can transform them to the instruction dataset formatted as chat completions. We will use `prepare_ift_dataset`
+# MAGIC %md 
+# MAGIC ## Generate Chat Completions 
+# MAGIC Now we should have all questions and answers ready and we can transform them to the instruction dataset formatted as chat completions. We will use `prepare_ift_dataset` (imported earlier from `finreganalytics.dataprep.ift_data_prep`).  
+# MAGIC    
+# MAGIC The `prepare_ift_dataset` function applies the `transform_chat_udf` to the dataframe which executes the `format_chat_completion` function as a parallel spark process (These functions are also defined in ift_data_prep.py`).  
+# MAGIC
+# MAGIC - Data in `qa_dataset` is read in
+# MAGIC - This is split into train and validate `qa_dataset_train` and `qa_dataset_val`
+# MAGIC - The output dataset is `qa_instructions_train` and `qa_instructions_val`
 
 # COMMAND ----------
 

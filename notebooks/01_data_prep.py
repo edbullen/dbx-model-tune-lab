@@ -29,6 +29,12 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 
 # COMMAND ----------
 
+uc_target_catalog = dbutils.widgets.get("unity_catalog")
+uc_target_schema = dbutils.widgets.get("unity_schema")
+uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Data Preparation and Load Libraries
 
@@ -40,17 +46,6 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 # COMMAND ----------
 
 # MAGIC %restart_python
-
-# COMMAND ----------
-
-uc_target_catalog = dbutils.widgets.get("unity_catalog")
-uc_target_schema = dbutils.widgets.get("unity_schema")
-uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC If the catalog, schema or source data path is not defined, try to create a new catalog and schema and copy sample pdf files from the git repo. 
 
 # COMMAND ----------
 
