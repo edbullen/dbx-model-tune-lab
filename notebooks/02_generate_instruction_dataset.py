@@ -43,12 +43,6 @@ print(f"Unity Catalog: {unity_catalog}, Unity Schema: {unity_schema} ")
 
 # COMMAND ----------
 
-uc_target_catalog = dbutils.widgets.get("unity_catalog")
-uc_target_schema = dbutils.widgets.get("unity_schema")
-uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## Load Libraries and Helper Functions
 
@@ -65,6 +59,12 @@ uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
 # COMMAND ----------
 
 # MAGIC %restart_python
+
+# COMMAND ----------
+
+uc_target_catalog = dbutils.widgets.get("unity_catalog")
+uc_target_schema = dbutils.widgets.get("unity_schema")
+uc_volume_path = f"/Volumes/{uc_target_catalog}/{uc_target_schema}/data"
 
 # COMMAND ----------
 
@@ -346,7 +346,7 @@ display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_datas
 # MAGIC ## Generate Chat Completions 
 # MAGIC Now we should have all questions and answers ready and we can transform them to the instruction dataset formatted as chat completions. We will use `prepare_ift_dataset` (imported earlier from `finreganalytics.dataprep.ift_data_prep`).  
 # MAGIC    
-# MAGIC The `prepare_ift_dataset` function applies the `transform_chat_udf` to the dataframe which executes the `format_chat_completion` function as a parallel spark process (These functions are also defined in ift_data_prep.py`).  
+# MAGIC The `prepare_ift_dataset` function applies the `transform_chat_udf` to the dataframe which executes the `format_chat_completion` function as a parallel spark process (These functions are also defined in `ift_data_prep.py`).  
 # MAGIC
 # MAGIC - Data in `qa_dataset` is read in
 # MAGIC - This is split into train and validate `qa_dataset_train` and `qa_dataset_val`
@@ -364,6 +364,23 @@ qa_ift_val_df = prepare_ift_dataset(qa_val_df, limit=-1)
 
 qa_ift_train_df.write.mode("overwrite").saveAsTable(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_train")
 qa_ift_val_df.write.mode("overwrite").saveAsTable(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_val")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC **QA Dataset Sample**
+# MAGIC
+# MAGIC A single column `messages` has rows with list-arrays `[{"cotnent":...}, {"content":...}, {"content":...}]`.   
+# MAGIC EG: 
+# MAGIC
+# MAGIC 0: {"content": "You are a Regulatory Reporting Assistant.\nPlease answer the question as precise as possible using information in context.\nIf you do not know, just say I don't know. ", "role": "system"}
+# MAGIC
+# MAGIC
+# MAGIC 1: {"content": "Context:\n (ii) from the amount in point (i):(i) the sum of the total value of securities denominated in that currency lent, sold orprovided under the master netting agreement and the amount of cash in thatcurrency lent or transferred under that agreement;(ii) the sum of the total value of securitie s denominated in that currency borrow ed,purchased or received under the master netting agreement and the amount of cash inthat currency borrowed or received under that agreement;(c) apply the volatility adjustment approp riate to a given group of securities or to a cashposition to the absolute value of the positive or negative net position in the securities in thatgroup;(d) apply the foreign exchange risk\n\n Please answer the user question using the given context:\n What is the purpose of calculating the sum of the total value of securities denominated in that currency lent, sold or provided under the master netting agreement, as mentioned in point (i), in the context of determining capital requirements?", "role": "user"}
+# MAGIC
+# MAGIC
+# MAGIC 2: {"content": "The purpose of calculating the sum of the total value of securities denominated in that currency lent, sold or provided under the master netting agreement, as mentioned in point (i), is to determine the total value of securities and cash lent or provided under the agreement. This calculation is part of a broader process of calculating potential future exposure to credit risk, which is a key component of determining capital requirements. Specifically, the calculation in point (i) is used to determine the gross exposure under the master netting agreement, which is then compared to the gross exposure under the agreement as calculated in point (ii). The resulting net position is then used to apply the volatility adjustment, and subsequently to determine the capital requirement. By calculating the net position in securities in a given currency, the institution can assess its potential exposure to credit risk and determine the necessary capital requirements to cover this exposure.", "role": "assistant"}
+# MAGIC
 
 # COMMAND ----------
 
