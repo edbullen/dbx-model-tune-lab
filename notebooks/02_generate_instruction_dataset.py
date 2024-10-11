@@ -307,6 +307,8 @@ display(qa_questions_df)  # noqa
 
 # MAGIC %md
 # MAGIC Once we have validated the entire approach, we can run it iteratively over the entire dataset. We will generate multiple questions for each chunk and iterate over the entire dataset in chunks of 200 chunks. We will store the generated questions and answers for each chunk independently.
+# MAGIC
+# MAGIC This takes about 1hr to run on a single gx4dn GPU.
 
 # COMMAND ----------
 
@@ -338,7 +340,7 @@ for i in range(number_of_questions):
 
 # COMMAND ----------
 
-display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_dataset"))  # noqa
+display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_dataset"))
 
 # COMMAND ----------
 
@@ -370,7 +372,7 @@ qa_ift_val_df.write.mode("overwrite").saveAsTable(f"{uc_target_catalog}.{uc_targ
 # MAGIC %md
 # MAGIC **QA Dataset Sample**
 # MAGIC
-# MAGIC A single column `messages` has rows with list-arrays `[{"cotnent":...}, {"content":...}, {"content":...}]`.   
+# MAGIC A single column `messages` has rows with list-arrays `[{"content":...}, {"content":...}, {"content":...}]`.   
 # MAGIC EG: 
 # MAGIC
 # MAGIC 0: {"content": "You are a Regulatory Reporting Assistant.\nPlease answer the question as precise as possible using information in context.\nIf you do not know, just say I don't know. ", "role": "system"}
@@ -384,11 +386,11 @@ qa_ift_val_df.write.mode("overwrite").saveAsTable(f"{uc_target_catalog}.{uc_targ
 
 # COMMAND ----------
 
-display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_val"))  # noqa
+display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_val"))  
 
 # COMMAND ----------
 
-display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_train"))  # noqa
+display(get_spark().read.table(f"{uc_target_catalog}.{uc_target_schema}.qa_instructions_train")) 
 
 # COMMAND ----------
 
