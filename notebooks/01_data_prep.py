@@ -5,7 +5,7 @@
 # MAGIC
 # MAGIC Generate synthetic question/answer data about Capital Requirements Regulation and use this data to fine tune the Llama 3.0 8B model.
 # MAGIC
-# MAGIC ## Notebook 1: data preparation
+# MAGIC ## Notebook 1: raw data preparation
 # MAGIC
 # MAGIC Create the `splitted_documents` table.
 

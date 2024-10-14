@@ -5,7 +5,7 @@
 # MAGIC
 # MAGIC Generate synthetic question/answer data about Capital Requirements Regulation and use this data to fine tune the Llama 3.0 8B model.
 # MAGIC
-# MAGIC ## Notebook 2: data generation
+# MAGIC ## Notebook 2: synthetic training data generation using Llama 3.1 70B
 # MAGIC
 # MAGIC create the tables:
 # MAGIC - `qa_dataset`
